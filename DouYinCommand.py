@@ -72,88 +72,123 @@ class DownloadConfig:
         """验证配置有效性"""
         # 实现验证逻辑
 
+
 configModel = {
-    "link": [],
-    "path": os.getcwd(),
-    "music": True,
-    "cover": True,
-    "avatar": True,
-    "json": True,
-    "start_time": "",
-    "end_time": "",
-    "folderstyle": True,
-    "mode": ["post"],
-    "number": {
-        "post": 0,
-        "like": 0,
-        "allmix": 0,
-        "mix": 0,
-        "music": 0,
+    # 基础配置组
+    "link": [],             # 待处理链接列表（用户输入）
+    "path": os.getcwd(),    # 文件保存基础路径（默认当前工作目录）
+    "music": True,          # 是否下载音频文件
+    "cover": True,          # 是否下载封面图片
+    "avatar": True,         # 是否下载用户头像
+    "json": True,           # 是否生成JSON元数据文件
+    "start_time": "",       # 时间筛选范围起始（格式：YYYY-MM-DD HH:MM）
+    "end_time": "",         # 时间筛选范围结束（格式同上）
+    "folderstyle": True,    # 是否启用结构化文件夹存储
+    "mode": ["post"],       # 运行模式选择（支持：post/like/mix/music等）
+    "number": {         # 各类型内容的最大下载数量限制
+        "post": 0,      # 普通帖子
+        "like": 0,      # 点赞作品
+        "allmix": 0,    # 全部合集
+        "mix": 0,       # 单个合集
+        "music": 0,     # 音乐作品
     },
-    'database': True,
-    "increase": {
-        "post": False,
-        "like": False,
-        "allmix": False,
-        "mix": False,
-        "music": False,
+    'database': True,   # 是否启用数据库存储
+    "increase": {           # 各类型内容的增量更新开关
+        "post": False,      # 普通帖子
+        "like": False,      # 点赞作品
+        "allmix": False,    # 全部合集
+        "mix": False,       # 单个合集
+        "music": False,     # 音乐作品
     },
-    "thread": 5,
-    "cookie": os.environ.get("DOUYIN_COOKIE", "")
+    # 性能与认证配置
+    "thread": 5,    # 下载线程数（并发控制）
+    "cookie": os.environ.get("DOUYIN_COOKIE", "") # 抖音登录凭证（从环境变量DOUYIN_COOKIE获取）
 }
 
+
+"""
+    初始化并配置命令行参数解析器
+
+    该函数创建并配置一个argparse.ArgumentParser对象，定义抖音批量下载工具所需的命令行参数。
+    支持从命令行直接指定参数或通过配置文件进行设置，包含下载配置、路径设置、线程控制等参数组。
+
+    Returns:
+        argparse.Namespace: 包含所有解析后的参数值的命名空间对象
+
+    参数说明:
+        -- 基础配置 --
+        cmd     : 运行模式选择(命令行/配置文件)
+        config  : 指定外部配置文件路径
+
+        -- 下载设置 --
+        link    : 支持多种抖音内容类型的URL，可添加多个链接
+        path    : 自定义下载存储路径
+        music   : 是否下载音频
+        cover   : 是否下载封面
+        avatar  : 是否下载作者头像
+        json    : 是否保存原始数据
+
+        -- 内容筛选 --
+        mode        : 主页下载模式(post/like/mix)
+        postnumber  : 主页作品下载数量
+        likenumber  : 喜欢作品下载数量
+        mixnumber   : 合集作品下载数量
+
+        -- 增量更新 --
+        database    : 是否启用数据库记录
+        postincrease: 主页作品增量更新开关
+        likeincrease: 喜欢作品增量更新开关
+
+        -- 系统配置 --
+        thread  : 下载线程数控制(默认5线程)
+        cookie  : 用户认证cookie设置
+    """
 def argument():
+
     parser = argparse.ArgumentParser(description='抖音批量下载工具 使用帮助')
+    # 基础运行模式配置
     parser.add_argument("--cmd", "-C", help="使用命令行(True)或者配置文件(False), 默认为False",
                         type=utils.str2bool, required=False, default=False)
+    # 下载内容配置组
     parser.add_argument("--link", "-l",
-                        help="作品(视频或图集)、直播、合集、音乐集合、个人主页的分享链接或者电脑浏览器网址, 可以设置多个链接(删除文案, 保证只有URL, https://v.douyin.com/kcvMpuN/ 或者 https://www.douyin.com/开头的)",
+                        help="作品(视频或图集)、直播、合集、音乐集合、个人主页的分享链接或者电脑浏览器网址",
                         type=str, required=False, default=[], action="append")
     parser.add_argument("--path", "-p", help="下载保存位置, 默认当前文件位置",
                         type=str, required=False, default=os.getcwd())
+    # 资源下载开关组
     parser.add_argument("--music", "-m", help="是否下载视频中的音乐(True/False), 默认为True",
                         type=utils.str2bool, required=False, default=True)
-    parser.add_argument("--cover", "-c", help="是否下载视频的封面(True/False), 默认为True, 当下载视频时有效",
+    parser.add_argument("--cover", "-c", help="是否下载视频的封面(True/False), 默认为True",
                         type=utils.str2bool, required=False, default=True)
     parser.add_argument("--avatar", "-a", help="是否下载作者的头像(True/False), 默认为True",
                         type=utils.str2bool, required=False, default=True)
+    # 数据存储配置
     parser.add_argument("--json", "-j", help="是否保存获取到的数据(True/False), 默认为True",
                         type=utils.str2bool, required=False, default=True)
     parser.add_argument("--folderstyle", "-fs", help="文件保存风格, 默认为True",
                         type=utils.str2bool, required=False, default=True)
-    parser.add_argument("--mode", "-M", help="link是个人主页时, 设置下载发布的作品(post)或喜欢的作品(like)或者用户所有合集(mix), 默认为post, 可以设置多种模式",
+    # 内容筛选配置组
+    parser.add_argument("--mode", "-M", help="个人主页下载模式(post/like/mix)",
                         type=str, required=False, default=[], action="append")
-    parser.add_argument("--postnumber", help="主页下作品下载个数设置, 默认为0 全部下载",
+    parser.add_argument("--postnumber", help="主页作品下载数量设置",
                         type=int, required=False, default=0)
-    parser.add_argument("--likenumber", help="主页下喜欢下载个数设置, 默认为0 全部下载",
+    parser.add_argument("--likenumber", help="主页喜欢作品下载数量设置",
                         type=int, required=False, default=0)
-    parser.add_argument("--allmixnumber", help="主页下合集下载个数设置, 默认为0 全部下载",
-                        type=int, required=False, default=0)
-    parser.add_argument("--mixnumber", help="单个合集下作品下载个数设置, 默认为0 全部下载",
-                        type=int, required=False, default=0)
-    parser.add_argument("--musicnumber", help="音乐(原声)下作品下载个数设置, 默认为0 全部下载",
-                        type=int, required=False, default=0)
-    parser.add_argument("--database", "-d", help="是否使用数据库, 默认为True 使用数据库; 如果不使用数据库, 增量更新不可用",
+    # 数据库配置组
+    parser.add_argument("--database", "-d", help="是否使用数据库, 默认为True",
                         type=utils.str2bool, required=False, default=True)
-    parser.add_argument("--postincrease", help="是否开启主页作品增量下载(True/False), 默认为False",
-                        type=utils.str2bool, required=False, default=False)
-    parser.add_argument("--likeincrease", help="是否开启主页喜欢增量下载(True/False), 默认为False",
-                        type=utils.str2bool, required=False, default=False)
-    parser.add_argument("--allmixincrease", help="是否开启主页合集增量下载(True/False), 默认为False",
-                        type=utils.str2bool, required=False, default=False)
-    parser.add_argument("--mixincrease", help="是否开启单个合集下作品增量下载(True/False), 默认为False",
-                        type=utils.str2bool, required=False, default=False)
-    parser.add_argument("--musicincrease", help="是否开启音乐(原声)下作品增量下载(True/False), 默认为False",
-                        type=utils.str2bool, required=False, default=False)
-    parser.add_argument("--thread", "-t",
-                        help="设置线程数, 默认5个线程",
+    # 线程控制参数
+    parser.add_argument("--thread", "-t", help="设置线程数, 默认5个线程",
                         type=int, required=False, default=5)
-    parser.add_argument("--cookie", help="设置cookie, 格式: \"name1=value1; name2=value2;\" 注意要加冒号",
+    # 用户认证配置
+    parser.add_argument("--cookie", help="设置cookie信息",
                         type=str, required=False, default='')
-    parser.add_argument("--config", "-F", 
+    # 配置文件参数
+    parser.add_argument("--config", "-F",
                        type=argparse.FileType('r', encoding='utf-8'),
                        help="配置文件路径")
     args = parser.parse_args()
+    # 确保线程数最小为5
     if args.thread <= 0:
         args.thread = 5
 
@@ -161,57 +196,97 @@ def argument():
 
 
 def yamlConfig():
+    """
+    从当前脚本所在目录加载并解析 `config.yml` 配置文件，更新全局配置模型 `configModel`。
+    该函数会处理以下特殊情况：
+    1. 如果配置文件中包含 `cookies` 字段，会将其转换为字符串格式并更新到 `configModel` 中。
+    2. 如果配置文件中 `end_time` 字段的值为 "now"，会将其替换为当前日期的字符串格式。
+    如果配置文件不存在或解析出错，会记录相应的警告日志。
+    """
+    # 获取当前脚本所在目录的路径
     curPath = os.path.dirname(os.path.realpath(sys.argv[0]))
+    # 拼接配置文件的完整路径
     yamlPath = os.path.join(curPath, "config.yml")
-    
     try:
+        # 打开并读取配置文件
         with open(yamlPath, 'r', encoding='utf-8') as f:
             configDict = yaml.safe_load(f)
-            
+
         # 使用字典推导式简化配置更新
         for key in configModel:
             if key in configDict:
                 if isinstance(configModel[key], dict):
+                    # 如果配置模型中的值是字典，则更新字典内容
                     configModel[key].update(configDict[key] or {})
                 else:
+                    # 否则直接更新值
                     configModel[key] = configDict[key]
-                    
-        # 特殊处理cookie
+
+        # 特殊处理cookie字段，将其转换为字符串格式
         if configDict.get("cookies"):
             cookieStr = "; ".join(f"{k}={v}" for k,v in configDict["cookies"].items())
             configModel["cookie"] = cookieStr
-            
-        # 特殊处理end_time
+
+        # 特殊处理end_time字段，如果值为 "now"，则替换为当前日期
         if configDict.get("end_time") == "now":
                 configModel["end_time"] = time.strftime("%Y-%m-%d", time.localtime())
-            
+
     except FileNotFoundError:
+        # 如果配置文件不存在，记录警告日志
         douyin_logger.warning("未找到配置文件config.yml")
     except Exception as e:
+        # 如果配置文件解析出错，记录警告日志
         douyin_logger.warning(f"配置文件解析出错: {str(e)}")
 
 
 def validate_config(config: dict) -> bool:
-    """验证配置有效性"""
+    """
+    验证配置字典的有效性。
+
+    该函数检查传入的配置字典是否包含所有必需的键，并且每个键对应的值是否符合预期的类型。
+    如果配置无效，函数会记录错误日志并返回 False；否则返回 True。
+
+    参数:
+        config (dict): 需要验证的配置字典。
+
+    返回值:
+        bool: 如果配置有效返回 True，否则返回 False。
+    """
+    # 定义必需的键及其对应的类型
     required_keys = {
         'link': list,
         'path': str,
         'thread': int
     }
-    
+
+    # 检查配置字典是否包含所有必需的键，并且类型是否正确
     for key, typ in required_keys.items():
         if key not in config or not isinstance(config[key], typ):
             douyin_logger.error(f"无效配置项: {key}")
             return False
-            
+
+    # 检查 'link' 键对应的值是否为字符串列表
     if not all(isinstance(url, str) for url in config['link']):
         douyin_logger.error("链接配置格式错误")
         return False
-        
+
     return True
 
 
 def main():
+    """
+    主函数，负责整个程序的执行流程。包括配置初始化、参数验证、路径处理、下载器初始化、链接处理以及耗时计算。
+    流程概述：
+    1. 记录程序开始时间。
+    2. 初始化配置，根据命令行参数或YAML文件更新配置。
+    3. 验证配置的有效性，若无效则退出。
+    4. 检查下载链接是否设置，若未设置则记录错误并退出。
+    5. 处理Cookie信息，若配置中有Cookie则更新请求头。
+    6. 处理保存路径，确保路径存在并记录路径信息。
+    7. 初始化下载器和相关配置。
+    8. 遍历所有下载链接，逐个处理。
+    9. 计算并记录程序总耗时。
+    """
     start = time.time()
 
     # 配置初始化
@@ -258,14 +333,29 @@ def main():
 
 
 def process_link(dy, dl, link):
-    """处理单个链接的下载逻辑"""
+    """
+    处理单个链接的下载逻辑。
+
+    该函数负责解析并处理给定的抖音链接，根据链接类型调用相应的处理函数进行下载操作。
+
+    参数:
+    - dy: 抖音操作对象，用于获取分享链接和解析链接类型。
+    - dl: 下载操作对象，用于执行具体的下载任务。
+    - link: 需要处理的抖音链接。
+
+    返回值:
+    无返回值。函数执行过程中会记录日志信息，并在出错时记录错误信息。
+    """
+    # 打印分隔线，表示开始处理一个新的链接
     douyin_logger.info("-" * 80)
     douyin_logger.info(f"[  提示  ]:正在请求的链接: {link}")
-    
+
     try:
+        # 获取分享链接并解析链接类型和关键信息
         url = dy.getShareLink(link)
         key_type, key = dy.getKey(url)
-        
+
+        # 定义不同类型链接的处理函数映射
         handlers = {
             "user": handle_user_download,
             "mix": handle_mix_download,
@@ -273,35 +363,61 @@ def process_link(dy, dl, link):
             "aweme": handle_aweme_download,
             "live": handle_live_download
         }
-        
+
+        # 根据链接类型获取对应的处理函数并执行
         handler = handlers.get(key_type)
         if handler:
             handler(dy, dl, key)
         else:
+            # 如果链接类型未知，记录警告信息
             douyin_logger.warning(f"[  警告  ]:未知的链接类型: {key_type}")
     except Exception as e:
+        # 捕获并记录处理链接过程中出现的任何异常
         douyin_logger.error(f"处理链接时出错: {str(e)}")
 
 
 def handle_user_download(dy, dl, key):
-    """处理用户主页下载"""
+    """
+    处理用户主页下载功能。
+
+    该函数负责从抖音用户主页下载用户的作品、喜欢的内容或合集。首先获取用户详细信息，
+    然后根据配置的模式（如 'post', 'like', 'mix'）分别处理不同的下载任务。
+
+    参数:
+    - dy: 抖音API的实例，用于获取用户信息和内容。
+    - dl: 下载器实例，用于执行具体的下载操作。
+    - key: 用户的sec_uid，用于唯一标识用户。
+
+    返回值:
+    无返回值。
+    """
+    # 记录日志，提示正在请求用户主页下的作品
     douyin_logger.info("[  提示  ]:正在请求用户主页下作品")
+
+    # 获取用户详细信息
     data = dy.getUserDetailInfo(sec_uid=key)
     nickname = ""
+
+    # 如果获取到用户信息，提取并处理用户昵称
     if data and data.get('user'):
         nickname = utils.replaceStr(data['user']['nickname'])
 
+    # 创建用户下载目录，目录名为 "user_昵称_sec_uid"
     userPath = os.path.join(configModel["path"], f"user_{nickname}_{key}")
     os.makedirs(userPath, exist_ok=True)
 
+    # 根据配置的模式，分别处理不同的下载任务
     for mode in configModel["mode"]:
         douyin_logger.info("-" * 80)
         douyin_logger.info(f"[  提示  ]:正在请求用户主页模式: {mode}")
-        
+
+        # 处理 'post' 或 'like' 模式
         if mode in ('post', 'like'):
             _handle_post_like_mode(dy, dl, key, mode, userPath)
+        # 处理 'mix' 模式
         elif mode == 'mix':
             _handle_mix_mode(dy, dl, key, userPath)
+
 
 def _handle_post_like_mode(dy, dl, key, mode, userPath):
     """处理发布/喜欢模式的下载"""
@@ -463,13 +579,26 @@ def handle_live_download(dy, dl, key):
 # 条件定义异步函数
 if ASYNC_SUPPORT:
     async def download_file(url, path):
+        """
+        异步下载文件并保存到指定路径。
+        参数:
+        - url (str): 要下载的文件的URL地址。
+        - path (str): 文件保存的本地路径。
+        返回值:
+        - bool: 如果文件成功下载并保存，返回True；否则返回False。
+        """
         async with aiohttp.ClientSession() as session:
+            # 发起GET请求获取文件内容
             async with session.get(url) as response:
+                # 检查响应状态码是否为200（成功）
                 if response.status == 200:
+                    # 将文件内容写入本地文件
                     with open(path, 'wb') as f:
                         f.write(await response.read())
                     return True
+        # 如果下载失败，返回False
         return False
+
 
 def update_config_from_args(args):
     """从命令行参数更新配置"""
